@@ -8,12 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --bg:#090f1a; --surf:#0f1829; --card:#141f33; --card2:#192540;
-  --brd:#1e2d47; --brd2:#253657;
-  --txt:#dde6f5; --sub:#8a9dc0; --faint:#162035;
-  --grn:#0ecf97; --grn-d:#042918;
-  --red:#ef4b5e; --red-d:#280a0e;
-  --blu:#3d82f5; --blu-d:#0a183a;
+  --bg:#ffffff; --surf:#f4f6fa; --card:#ffffff; --card2:#edf0f7;
+  --brd:#dde3ed; --brd2:#c8d1e0;
+  --txt:#1a2540; --sub:#6b7a99; --faint:#eef1f7;
+  --grn:#0ecf97; --grn-d:#e0faf3;
+  --red:#ef4b5e; --red-d:#fde8ea;
+  --blu:#3d82f5; --blu-d:#e8effd;
   --amb:#f0a030; --pur:#8b6ef5; --tel:#1fc8c0; --ros:#f56880;
   --font:"Plus Jakarta Sans",sans-serif; --mono:"JetBrains Mono",monospace;
   --r:10px; --r2:14px; --r3:18px;
@@ -34,7 +34,7 @@ body { background:var(--bg); color:var(--txt); font-family:var(--font); font-siz
 .ldr-msg { font-size:12px; color:var(--sub); letter-spacing:.03em }
 
 #app { display:none }
-.topbar { position:sticky; top:0; z-index:200; height:54px; background:rgba(9,15,26,.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--brd); display:flex; align-items:center; justify-content:space-between; padding:0 24px; gap:16px }
+.topbar { position:sticky; top:0; z-index:200; height:54px; background:rgba(255,255,255,.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--brd); display:flex; align-items:center; justify-content:space-between; padding:0 24px; gap:16px }
 .brand { display:flex; align-items:center; gap:10px; flex-shrink:0 }
 .brand-icon { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--grn),var(--blu)); display:flex; align-items:center; justify-content:center; font-size:15px }
 .brand-txt { font-size:14px; font-weight:800; letter-spacing:-.3px }
@@ -102,8 +102,8 @@ table thead th { background:var(--surf); border-bottom:1px solid var(--brd); pad
 table thead th.sortable { cursor:pointer; user-select:none }
 table thead th.sortable:hover { color:var(--txt) }
 table thead th.sorted { color:var(--blu) }
-table tbody tr { border-bottom:1px solid rgba(30,45,71,.5); transition:background .1s }
-table tbody tr:hover { background:rgba(255,255,255,.02) }
+table tbody tr { border-bottom:1px solid rgba(180,195,215,.45); transition:background .1s }
+table tbody tr:hover { background:rgba(0,0,0,.025) }
 table tbody td { padding:9px 14px; font-size:12px; white-space:nowrap }
 .mtbl tbody td { font-family:var(--mono); font-size:11px; color:var(--sub) }
 .mtbl tbody td:first-child { font-family:var(--font); font-weight:700; font-size:12px; color:var(--txt) }
@@ -130,7 +130,7 @@ table tbody td { padding:9px 14px; font-size:12px; white-space:nowrap }
 .pb.on { background:var(--blu); border-color:var(--blu); color:#fff; font-weight:600 }
 
 .ctbl { width:100%; border-collapse:collapse }
-.ctbl td { padding:8px 14px; border-bottom:1px solid rgba(30,45,71,.5); font-size:12px }
+.ctbl td { padding:8px 14px; border-bottom:1px solid rgba(180,195,215,.45); font-size:12px }
 .ctbl td:first-child { color:var(--txt); font-weight:500 }
 .ctbl td:nth-child(2) { font-family:var(--mono); color:var(--sub); text-align:right }
 .ctbl td:nth-child(3) { font-family:var(--mono); font-size:10px; color:var(--sub); text-align:right; width:52px }
@@ -295,7 +295,7 @@ function clr(n, i) {
 }
 
 const GRD = {
-  bg:    '#090f1a', sub: '#8a9dc0',
+  bg:    '#ffffff', sub: '#6b7a99',
   grn:   '#0ecf97', red: '#ef4b5e', blu: '#3d82f5', amb: '#f0a030'
 };
 
