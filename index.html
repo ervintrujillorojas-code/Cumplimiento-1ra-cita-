@@ -583,55 +583,90 @@ function drawOvCausal(){
 
 // ══ EXCEL DOWNLOAD ════════════════════════════════════════════════════
 function downloadExcel(){
-  const rows=OV_FIL.map(r=>({
-    'REM':r.REM,
-    'Departamento':r.DEPARTAMENTO,
-    'Fecha Calificación':r.FECHA_CALIF,
-    '1ra Cita OK':r.PRIMERA_CITA_OK,
-    'Estado':r.CLASIFICACION,
-    'Origen Incumplimiento':r.ORIGEN_INCUMPLIMIENTO||'',
-    'Causal CSV':r.CAUSAL||'',
-    'Polígono':r.POLIGONO||'',
-    'Δ Días':r.DIAS_DIF!==''?+r.DIAS_DIF:'',
-    'Mes':r.mes_año||''
-  }));
+  try {
+    const btn = document.querySelector('.fbtn');
+    const origTxt = btn.innerHTML;
+    btn.innerHTML = '⏳ Generando…';
+    btn.disabled = true;
 
-  const ws=XLSX.utils.json_to_sheet(rows);
+    setTimeout(() => {
+      try {
+        // ── Hoja Detalle ──────────────────────────────────────────────
+        const rows = OV_FIL.map(r => ({
+          'REM': r.REM,
+          'Departamento': r.DEPARTAMENTO,
+          'Fecha Calificacion': r.FECHA_CALIF,
+          '1ra Cita OK': r.PRIMERA_CITA_OK,
+          'Estado': r.CLASIFICACION,
+          'Origen Incumplimiento': r.ORIGEN_INCUMPLIMIENTO || '',
+          'Causal CSV': r.CAUSAL || '',
+          'Poligono': r.POLIGONO || '',
+          'Dias Dif': r.DIAS_DIF !== '' ? +r.DIAS_DIF : '',
+          'Mes': r.mes_año || ''
+        }));
 
-  // Column widths
-  ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:14},{wch:24},{wch:20},{wch:28},{wch:14},{wch:8},{wch:10}];
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{wch:12},{wch:18},{wch:14},{wch:14},{wch:24},{wch:22},{wch:28},{wch:14},{wch:8},{wch:10}];
 
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,'Detalle',ws);
+        // ── Hoja Resumen ──────────────────────────────────────────────
+        const tot = OV_FIL.length;
+        const c   = OV_FIL.filter(r => r.CLASIFICACION === 'Cumplimiento de cita').length;
+        const inc = tot - c;
+        const sumRows = [
+          { Indicador: 'Total OPs', Cantidad: tot, Porcentaje: '100%' },
+          { Indicador: 'Cumplimiento de cita',   Cantidad: c,   Porcentaje: tot > 0 ? (c/tot*100).toFixed(1)+'%' : '0%' },
+          { Indicador: 'Incumplimiento de cita', Cantidad: inc, Porcentaje: tot > 0 ? (inc/tot*100).toFixed(1)+'%' : '0%' }
+        ];
+        const counts = {};
+        OV_FIL.filter(r => r.CLASIFICACION === 'Incumplimiento de cita')
+               .forEach(r => { const o = r.ORIGEN_INCUMPLIMIENTO || 'Sin origen'; counts[o] = (counts[o]||0)+1; });
+        Object.entries(counts).sort((a,b)=>b[1]-a[1])
+               .forEach(([o,n]) => sumRows.push({ Indicador: '  ' + o, Cantidad: n, Porcentaje: inc > 0 ? (n/inc*100).toFixed(1)+'%' : '0%' }));
 
-  // Summary sheet
-  const tot=OV_FIL.length;
-  const c=OV_FIL.filter(r=>r.CLASIFICACION==='Cumplimiento de cita').length;
-  const i=tot-c;
-  const sumRows=[
-    {Indicador:'Total OPs',Cantidad:tot,Porcentaje:'100%'},
-    {Indicador:'Cumplimiento de cita',Cantidad:c,Porcentaje:tot>0?(c/tot*100).toFixed(1)+'%':'0%'},
-    {Indicador:'Incumplimiento de cita',Cantidad:i,Porcentaje:tot>0?(i/tot*100).toFixed(1)+'%':'0%'},
-  ];
-  const counts={};
-  OV_FIL.filter(r=>r.CLASIFICACION==='Incumplimiento de cita').forEach(r=>{const o=r.ORIGEN_INCUMPLIMIENTO||'Sin origen';counts[o]=(counts[o]||0)+1;});
-  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([o,n])=>{
-    sumRows.push({Indicador:'  └ '+o,Cantidad:n,Porcentaje:i>0?(n/i*100).toFixed(1)+'%':'0%'});
-  });
-  const ws2=XLSX.utils.json_to_sheet(sumRows);
-  ws2['!cols']=[{wch:30},{wch:12},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,'Resumen',ws2);
+        const ws2 = XLSX.utils.json_to_sheet(sumRows);
+        ws2['!cols'] = [{wch:30},{wch:12},{wch:12}];
 
-  // Filename with filter info
-  const est=document.getElementById('ov-fE').value;
-  const mes=document.getElementById('ov-fM').value;
-  const dep=document.getElementById('ov-fD').value;
-  const parts=['Cumplimiento_Citas'];
-  if(mes)parts.push(mes);
-  if(dep)parts.push(dep.replace(/ /g,'_'));
-  if(est)parts.push(est==='Cumplimiento de cita'?'CUMPL':'INCUMPL');
-  parts.push(new Date().toISOString().slice(0,10));
-  XLSX.writeFile(wb,parts.join('_')+'.xlsx');
+        // ── Armar workbook ────────────────────────────────────────────
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, 'Detalle', ws);
+        XLSX.utils.book_append_sheet(wb, 'Resumen', ws2);
+
+        // ── Filename ──────────────────────────────────────────────────
+        const est = document.getElementById('ov-fE').value;
+        const mes = document.getElementById('ov-fM').value;
+        const dep = document.getElementById('ov-fD').value;
+        const parts = ['Cumplimiento_Citas'];
+        if (mes) parts.push(mes);
+        if (dep) parts.push(dep.replace(/ /g,'_'));
+        if (est) parts.push(est === 'Cumplimiento de cita' ? 'CUMPL' : 'INCUMPL');
+        parts.push(new Date().toISOString().slice(0,10));
+        const filename = parts.join('_') + '.xlsx';
+
+        // ── Blob download (works locally and in browser) ───────────────
+        const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+        const blob  = new Blob([wbout], { type:'application/octet-stream' });
+        const url   = URL.createObjectURL(blob);
+        const a     = document.createElement('a');
+        a.href      = url;
+        a.download  = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+        btn.innerHTML = '✓ Descargado';
+        setTimeout(() => { btn.innerHTML = origTxt; btn.disabled = false; }, 2000);
+      } catch(e) {
+        alert('Error al generar Excel: ' + e.message);
+        console.error(e);
+        btn.innerHTML = origTxt;
+        btn.disabled = false;
+      }
+    }, 50);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    console.error(e);
+  }
 }
 
 // ══ MONTHLY ═══════════════════════════════════════════════════════════
