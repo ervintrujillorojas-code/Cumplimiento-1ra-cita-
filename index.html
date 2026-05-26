@@ -237,23 +237,23 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
 <template id="fbar-tpl">
   <div class="gfbar">
     <div class="fg"><label>Estado</label>
-      <select class="fsel" data-f="estado" onchange="applyFilters()">
+      <select class="fsel" data-f="estado" onchange="applyFilters(this)">
         <option value="">Todos</option>
         <option value="Cumplimiento de cita">✔ Cumplimiento</option>
         <option value="Incumplimiento de cita">✘ Incumplimiento</option>
       </select>
     </div>
     <div class="fg"><label>Mes</label>
-      <select class="fsel" data-f="mes" onchange="applyFilters()"></select>
+      <select class="fsel" data-f="mes" onchange="applyFilters(this)"></select>
     </div>
     <div class="fg"><label>Departamento</label>
-      <select class="fsel" data-f="dept" onchange="applyFilters()"></select>
+      <select class="fsel" data-f="dept" onchange="applyFilters(this)"></select>
     </div>
     <div class="fg"><label>Origen</label>
-      <select class="fsel" data-f="origen" onchange="applyFilters()"></select>
+      <select class="fsel" data-f="origen" onchange="applyFilters(this)"></select>
     </div>
     <div class="fg"><label>Causal</label>
-      <select class="fsel" data-f="causal" onchange="applyFilters()"></select>
+      <select class="fsel" data-f="causal" onchange="applyFilters(this)"></select>
     </div>
     <div class="fbar-actions">
       <button class="fbtn-reset" onclick="resetFilters()">✕ Limpiar</button>
@@ -489,18 +489,15 @@ function populateFilterOptions() {
 
 // ══ APPLY FILTERS (sync all selects → rebuild everything) ═════════════
 function applyFilters(src) {
-  // Read from whichever filter bar changed (they all sync)
-  document.querySelectorAll('[data-f]').forEach(sel => {
-    const f = sel.getAttribute('data-f');
-    if (F[f] !== undefined && sel.value !== undefined) {
-      F[f] = sel.value;
-    }
-  });
+  // Read ONLY from the element that changed, then sync all copies
+  if (src) {
+    F[src.getAttribute('data-f')] = src.value;
+  }
 
-  // Sync all copies of each select
+  // Sync all copies of each select to match F
   document.querySelectorAll('[data-f]').forEach(sel => {
     const f = sel.getAttribute('data-f');
-    if (sel.value !== F[f]) sel.value = F[f];
+    sel.value = F[f] || '';
     sel.classList.toggle('active', !!F[f]);
   });
 
