@@ -293,7 +293,7 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
     <div class="fg"><label>Departamento</label>
       <select class="fsel" data-f="dept" onchange="applyFilters(this)"></select>
     </div>
-    <div class="fg"><label>Origen</label>
+    <div class="fg"><label>Origen incumplimiento</label>
       <select class="fsel" data-f="origen" onchange="applyFilters(this)"></select>
     </div>
     <div class="fg"><label>Causal</label>
@@ -382,6 +382,25 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
       <p class="ctbl-hint">💡 Clic en fila para filtrar</p>
     </div>
   </div>
+
+  <div class="sec">Análisis Pareto · Causales de incumplimiento <span style="font-size:10px;color:var(--sub);font-weight:400;text-transform:none;letter-spacing:0">· barras intensas = causales que explican el 80%</span></div>
+  <div class="crow c12 fa d3">
+    <div class="card">
+      <div class="card-hd">Top 3 causales</div>
+      <div id="pareto-summary"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">Pareto · Causales ordenadas por impacto
+        <div class="card-right">
+          <span class="lg"><span class="lg-dot" style="background:rgba(220,38,38,.75)"></span>≤ 80% acum.</span>
+          <span class="lg"><span class="lg-dot" style="background:rgba(220,38,38,.28)"></span>> 80% acum.</span>
+          <span class="lg"><span class="lg-dot" style="background:rgba(37,99,235,.85)"></span>% acumulado</span>
+        </div>
+      </div>
+      <canvas id="cpareto" style="max-height:340px"></canvas>
+      <p class="ctbl-hint">💡 Haz clic en una barra para filtrar por esa causal. Clic en la misma barra para deseleccionar.</p>
+    </div>
+  </div>
 </div>
 
 <!-- ══ DEPARTAMENTOS ══════════════════════════════════════════════ -->
@@ -468,7 +487,7 @@ const G={sub:'#6b7ca4',grn:'#059669',red:'#dc2626',blu:'#2563eb',amb:'#d97706',b
 
 // ══ GLOBAL STATE ══════════════════════════════════════════════════════
 let RAW=[], PAGE=1, PS=60, SC=null, SA=true;
-let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null;
+let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null, paretoC=null;
 
 // Global filter state — single source of truth
 const F = { estado:'', mes:'', dept:'', origen:'', causal:'', lleva:'' };
@@ -505,7 +524,6 @@ window.addEventListener('load',async()=>{
   injectFilterBars();
   populateFilterOptions();
   applyFilters();
-  drawStaticCharts();
   document.getElementById('ldr').style.display='none';
   document.getElementById('app').style.display='block';
 });
@@ -591,7 +609,8 @@ function applyFilters(src) {
   drawOvCausal(fil);
   drawMonthly(fil);
   drawOrigenPanel(fil);
-  drawDeptTable(fil);
+  drawPareto(fil);
+  drawDeptCharts(fil);
   renderDet();
 }
 
@@ -608,15 +627,17 @@ function setFilter(key, val) {
 }
 
 // ══ ACTIVE PILLS ══════════════════════════════════════════════════════
-const FLABELS = {estado:'Estado',mes:'Mes',dept:'Depto.',origen:'Origen',causal:'Causal',lleva:'Cliente se lo lleva'};
+const FLABELS = {estado:'Estado',mes:'Mes',dept:'Depto.',origen:'Origen incumpl.',causal:'Causal',lleva:'Cliente se lo lleva'};
 function updatePills() {
   const active = Object.entries(F).filter(([,v])=>v);
+  const mesLabel = Object.fromEntries(MONTHLY.map(m=>[m.mes_año, m.label]));
   document.querySelectorAll('[id^="active-pills"]').forEach(el => {
     if (active.length === 0) { el.style.display='none'; el.innerHTML=''; return; }
     el.style.display='flex';
-    el.innerHTML = active.map(([k,v])=>
-      `<span class="pill">${FLABELS[k]}: ${v} <button onclick="setFilter('${k}','')">×</button></span>`
-    ).join('');
+    el.innerHTML = active.map(([k,v])=>{
+      const display = k === 'mes' ? (mesLabel[v] || v) : v;
+      return `<span class="pill">${FLABELS[k]}: ${display} <button onclick="setFilter('${k}','')">×</button></span>`;
+    }).join('');
   });
 }
 
@@ -879,19 +900,216 @@ function drawOrigenPanel(fil) {
   });
 }
 
-// ══ STATIC CHARTS (drawn once — dept + causal bar) ════════════════════
-function drawStaticCharts() {
-  drawDeptCharts();
-  drawCausalChart();
+// ══ PARETO ═════════════════════════════════════════════════════════════
+function drawPareto(fil) {
+  // Ignora F.causal para preservar la distribución completa como contexto analítico.
+  // Todos los demás filtros activos (mes, depto, origen, estado, lleva) se aplican igual.
+  const filSinCausal = RAW.filter(r => {
+    if (F.estado && r.CLASIFICACION !== F.estado) return false;
+    if (F.mes    && r.mes_año       !== F.mes)    return false;
+    if (F.dept   && r.DEPARTAMENTO  !== F.dept)   return false;
+    if (F.origen && r.ORIGEN        !== F.origen) return false;
+    if (F.lleva  && r.CLIENTE_LLEVA !== F.lleva)  return false;
+    return true;
+  });
+  const inc = filSinCausal.filter(r => r.CLASIFICACION === 'Incumplimiento de cita');
+  const total = inc.length;
+
+  const counts = {};
+  inc.forEach(r => {
+    const c = r.CAUSAL && r.CAUSAL !== '' ? r.CAUSAL : 'Sin causal';
+    counts[c] = (counts[c]||0) + 1;
+  });
+
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  let cum = 0;
+  const rows = sorted.map(([causal, n]) => {
+    cum += n;
+    return {
+      causal, n,
+      pct:    total > 0 ? +(n/total*100).toFixed(1)   : 0,
+      cumPct: total > 0 ? +(cum/total*100).toFixed(1) : 0
+    };
+  });
+
+  // ── Tarjeta Top 3 ──────────────────────────────────────────────────
+  const top3 = rows.slice(0, 3);
+  const top3N   = top3.reduce((s, r) => s + r.n, 0);
+  const top3Cum = rows[2] ? rows[2].cumPct : (rows[rows.length-1] ? rows[rows.length-1].cumPct : 0);
+  const topColors = ['var(--red)','var(--amb)','var(--blu)'];
+
+  const sumEl = document.getElementById('pareto-summary');
+  if (sumEl) {
+    if (top3.length === 0) {
+      sumEl.innerHTML = '<div style="color:var(--sub);font-size:12px;padding:14px 0">Sin incumplimientos para los filtros seleccionados.</div>';
+    } else {
+      sumEl.innerHTML =
+        top3.map((r, i) => `
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 0;${i < top3.length-1 ? 'border-bottom:1px solid var(--brd)' : ''}">
+            <div style="width:22px;height:22px;border-radius:50%;background:${topColors[i]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0;margin-top:2px">${i+1}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.causal}">${r.causal}</div>
+              <div style="font-size:10px;color:var(--sub);margin-top:3px">${r.n.toLocaleString('es-CO')} incumplimientos &nbsp;·&nbsp; <span style="color:var(--red);font-weight:700">${r.pct}%</span> del total</div>
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:${topColors[i]};flex-shrink:0;text-align:right;line-height:1.2">${r.cumPct}%<br><span style="font-size:9px;font-weight:400;color:var(--sub)">acum.</span></div>
+          </div>`).join('') +
+        `<div style="margin-top:12px;padding:10px 14px;background:var(--faint);border-radius:var(--r);border:1px solid var(--brd)">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--sub);margin-bottom:6px">Impacto combinado Top 3</div>
+          <div style="font-size:22px;font-weight:800;color:var(--red);font-family:var(--mono);letter-spacing:-1px;line-height:1">${top3N.toLocaleString('es-CO')}</div>
+          <div style="font-size:11px;color:var(--sub);margin-top:4px">incumplimientos &nbsp;·&nbsp; <b style="color:var(--txt)">${top3Cum}%</b> acumulado</div>
+        </div>`;
+    }
+  }
+
+  // ── Gráfico Pareto ──────────────────────────────────────────────────
+  const labels = rows.map(r => r.causal.length > 20 ? r.causal.slice(0,19)+'…' : r.causal);
+  const vals   = rows.map(r => r.n);
+  const cums   = rows.map(r => r.cumPct);
+  const ref80  = rows.map(() => 80);
+
+  if (paretoC) { paretoC.destroy(); paretoC = null; }
+  const ctx = document.getElementById('cpareto');
+  if (!ctx || rows.length === 0) return;
+
+  paretoC = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Incumplimientos',
+          data: vals,
+          backgroundColor: rows.map(r => {
+            if (F.causal) return r.causal === F.causal ? 'rgba(220,38,38,.90)' : 'rgba(220,38,38,.13)';
+            return r.cumPct <= 80 ? 'rgba(220,38,38,.75)' : 'rgba(220,38,38,.28)';
+          }),
+          borderRadius: 4,
+          borderSkipped: false,
+          yAxisID: 'y',
+          order: 2
+        },
+        {
+          type: 'line',
+          label: '% Acumulado',
+          data: cums,
+          borderColor: 'rgba(37,99,235,.85)',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: 'rgba(37,99,235,.85)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          fill: false,
+          tension: 0.1,
+          yAxisID: 'y2',
+          order: 1
+        },
+        {
+          type: 'line',
+          label: 'Umbral 80%',
+          data: ref80,
+          borderColor: 'rgba(217,119,6,.75)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          yAxisID: 'y2',
+          order: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      onClick: function(event, elements) {
+        if (!elements.length || elements[0].datasetIndex !== 0) return;
+        const causal = rows[elements[0].index]?.causal;
+        if (!causal || causal === 'Sin causal') return;
+        setFilter('causal', causal);
+      },
+      onHover: function(event, elements) {
+        const hasBar = elements.some(e => e.datasetIndex === 0);
+        if (event.native) event.native.target.style.cursor = hasBar ? 'pointer' : 'default';
+      },
+      plugins: {
+        legend: leg(),
+        datalabels: {
+          display: function(ctx) { return ctx.dataset.type === 'bar'; },
+          color: '#fff',
+          anchor: 'end',
+          align: 'start',
+          offset: 2,
+          font: { size: 9, weight: '700', family: 'Plus Jakarta Sans' },
+          formatter: function(v, ctx) {
+            const r = rows[ctx.dataIndex];
+            return r ? r.pct + '%' : '';
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.dataset.label === 'Incumplimientos') {
+                const r = rows[ctx.dataIndex];
+                if (!r) return '';
+                return [
+                  '  Cantidad: ' + r.n.toLocaleString('es-CO'),
+                  '  % individual: ' + r.pct + '%',
+                  '  % acumulado: ' + r.cumPct + '%'
+                ];
+              }
+              if (ctx.dataset.label === '% Acumulado') return '  % acumulado: ' + ctx.raw + '%';
+              if (ctx.dataset.label === 'Umbral 80%')  return '  Referencia Pareto: 80%';
+              return ctx.dataset.label + ': ' + ctx.raw;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: G.sub, font: { size: 9 }, maxRotation: 35, minRotation: 0 },
+          grid: { color: G.brd },
+          border: { dash: [3, 3] }
+        },
+        y: {
+          position: 'left',
+          ticks: { color: G.sub, font: { size: 10 } },
+          grid: { color: G.brd },
+          border: { dash: [3, 3] },
+          title: { display: true, text: 'Incumplimientos', color: G.sub, font: { size: 10 } }
+        },
+        y2: {
+          position: 'right',
+          min: 0,
+          max: 100,
+          ticks: { color: G.sub, font: { size: 10 }, callback: v => v + '%' },
+          grid: { display: false },
+          title: { display: true, text: '% Acumulado', color: G.sub, font: { size: 10 } }
+        }
+      }
+    }
+  });
 }
 
-function drawDeptCharts() {
-  const fil=filtered();
+function drawDeptCharts(fil) {
   drawDeptTable(fil);
-  const depts=DEPT.filter(d=>d.DEPARTAMENTO&&d.DEPARTAMENTO!=='');
+  const counts={};
+  fil.forEach(r=>{
+    if(!r.DEPARTAMENTO) return;
+    if(!counts[r.DEPARTAMENTO]) counts[r.DEPARTAMENTO]={c:0,i:0};
+    if(r.CLASIFICACION==='Cumplimiento de cita') counts[r.DEPARTAMENTO].c++;
+    else counts[r.DEPARTAMENTO].i++;
+  });
+  const depts=Object.entries(counts)
+    .map(([name,v])=>({DEPARTAMENTO:name,cumplidas:v.c,incumplidas:v.i,total:v.c+v.i}))
+    .sort((a,b)=>b.total-a.total);
 
   if(deptC){deptC.destroy();deptC=null;}
   if(dept2C){dept2C.destroy();dept2C=null;}
+
+  if(depts.length===0) return;
 
   deptC=new Chart(document.getElementById('cdept'),{type:'bar',
     data:{labels:depts.map(d=>d.DEPARTAMENTO),datasets:[
@@ -938,23 +1156,12 @@ function drawDeptTable(fil) {
   });
 }
 
-function drawCausalChart() {
-  if(causalC){causalC.destroy();causalC=null;}
-  causalC=new Chart(document.getElementById('ccausal'),{type:'bar',
-    data:{labels:CAUSAL.map(c=>c.causal.length>22?c.causal.slice(0,21)+'…':c.causal),
-      datasets:[{label:'Cantidad',data:CAUSAL.map(c=>c.cnt),backgroundColor:'rgba(220,38,38,.55)',borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false},
-      datalabels:dlabels({color:'#18243e',anchor:'end',align:'right',offset:4,formatter:v=>v.toLocaleString('es-CO')})},
-      scales:{x:gy(),y:{ticks:{color:G.sub,font:{size:10}},grid:{color:'rgba(0,0,0,0)'}}}}
-  });
-}
-
 // ══ DETAIL ════════════════════════════════════════════════════════════
 function renderDet() {
   const q=(document.getElementById('srch')||{}).value||'';
   const ql=q.toLowerCase();
   let fil=filtered();
-  if(ql) fil=fil.filter(r=>[r.REM,r.DEPARTAMENTO,r.ORIGEN,r.CLASIFICACION,r.CAUSAL,r.POLIGONO].join(' ').toLowerCase().includes(ql));
+  if(ql) fil=fil.filter(r=>[r.REM,r.DEPARTAMENTO,r.ORIGEN,r.CLASIFICACION,r.CAUSAL,r.DETALLE].join(' ').toLowerCase().includes(ql));
   if(SC!==null) fil=fil.slice().sort((a,b)=>{let va=a[COLS[SC]]??'',vb=b[COLS[SC]]??'';if(SC===8){va=+va||0;vb=+vb||0;}return va<vb?(SA?-1:1):va>vb?(SA?1:-1):0;});
   const tot=fil.length,pages=Math.max(1,Math.ceil(tot/PS));
   PAGE=Math.min(PAGE,pages);
