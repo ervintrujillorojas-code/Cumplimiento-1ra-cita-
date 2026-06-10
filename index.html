@@ -187,6 +187,25 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
 .pill button{background:none;border:none;cursor:pointer;color:var(--blu);font-size:13px;line-height:1;padding:0 0 0 2px;font-weight:700}
 .pill button:hover{color:var(--red)}
 
+/* ── MULTI-SELECT DROPDOWN ── */
+.fms-wrap{position:relative}
+.fms-trigger{background:var(--faint);border:1px solid var(--brd);border-radius:8px;padding:7px 28px 7px 11px;color:var(--txt);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;outline:none;min-width:140px;text-align:left;position:relative;transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box}
+.fms-trigger::after{content:"▾";position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--sub);pointer-events:none}
+.fms-trigger.open,.fms-trigger:focus{border-color:var(--blu);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fms-trigger.active{border-color:var(--blu);background:var(--blu-l);color:var(--blu);font-weight:700}
+.fms-trigger.active::after{color:var(--blu)}
+.fms-panel{position:absolute;top:calc(100% + 4px);left:0;min-width:210px;background:#fff;border:1px solid var(--brd);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.13);z-index:400;display:none}
+.fms-panel.open{display:block}
+.fms-all{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:700;color:var(--sub);border-bottom:1px solid var(--brd);user-select:none}
+.fms-all:hover{background:var(--faint)}
+.fms-all input{cursor:pointer;accent-color:var(--blu);width:13px;height:13px;flex-shrink:0}
+.fms-list{max-height:210px;overflow-y:auto;padding:4px 0}
+.fms-item{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:var(--txt);user-select:none}
+.fms-item:hover{background:var(--faint)}
+.fms-item input[type=checkbox]{cursor:pointer;accent-color:var(--blu);width:13px;height:13px;flex-shrink:0}
+.fbtn-apply{background:var(--blu);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font);transition:.15s}
+.fbtn-apply:hover{background:#1d4ed8}
+
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){.krow{grid-template-columns:1fr 1fr}.c21,.c12{grid-template-columns:1fr}.c2{grid-template-columns:1fr}.ogrid{grid-template-columns:1fr 1fr}}
 @media(max-width:680px){main{padding:12px 14px}.krow{grid-template-columns:1fr 1fr;gap:10px}.ogrid{grid-template-columns:1fr}.topbar{padding:0 14px}.chips,.brand-sub{display:none}.gfbar{flex-direction:column;align-items:stretch}.fbar-actions{margin-left:0}}
@@ -280,33 +299,50 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
 <!-- Template – cloned into each panel by JS -->
 <template id="fbar-tpl">
   <div class="gfbar">
-    <div class="fg"><label>Estado</label>
-      <select class="fsel" data-f="estado" onchange="applyFilters(this)">
-        <option value="">Todos</option>
-        <option value="Cumplimiento de cita">✔ Cumplimiento</option>
-        <option value="Incumplimiento de cita">✘ Incumplimiento</option>
-      </select>
+    <div class="fg fms-wrap" data-f="estado">
+      <label>Estado</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los estados</button>
+      <div class="fms-panel">
+        <label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('estado',this.checked)"> Seleccionar todos</label>
+        <div class="fms-list">
+          <label class="fms-item"><input type="checkbox" value="Cumplimiento de cita" onchange="toggleCheck('estado',this.value,this.checked)"> ✔ Cumplimiento</label>
+          <label class="fms-item"><input type="checkbox" value="Incumplimiento de cita" onchange="toggleCheck('estado',this.value,this.checked)"> ✘ Incumplimiento</label>
+        </div>
+      </div>
     </div>
-    <div class="fg"><label>Mes</label>
-      <select class="fsel" data-f="mes" onchange="applyFilters(this)"></select>
+    <div class="fg fms-wrap" data-f="mes">
+      <label>Mes</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los meses</button>
+      <div class="fms-panel"><label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('mes',this.checked)"> Seleccionar todos</label><div class="fms-list"></div></div>
     </div>
-    <div class="fg"><label>Departamento</label>
-      <select class="fsel" data-f="dept" onchange="applyFilters(this)"></select>
+    <div class="fg fms-wrap" data-f="dept">
+      <label>Departamento</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los deptos.</button>
+      <div class="fms-panel"><label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('dept',this.checked)"> Seleccionar todos</label><div class="fms-list"></div></div>
     </div>
-    <div class="fg"><label>Origen incumplimiento</label>
-      <select class="fsel" data-f="origen" onchange="applyFilters(this)"></select>
+    <div class="fg fms-wrap" data-f="origen">
+      <label>Origen incumplimiento</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los orígenes</button>
+      <div class="fms-panel"><label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('origen',this.checked)"> Seleccionar todos</label><div class="fms-list"></div></div>
     </div>
-    <div class="fg"><label>Causal</label>
-      <select class="fsel" data-f="causal" onchange="applyFilters(this)"></select>
+    <div class="fg fms-wrap" data-f="causal">
+      <label>Causal</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todas las causales</button>
+      <div class="fms-panel"><label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('causal',this.checked)"> Seleccionar todos</label><div class="fms-list"></div></div>
     </div>
-    <div class="fg"><label>Cliente se lo lleva</label>
-      <select class="fsel" data-f="lleva" onchange="applyFilters(this)">
-        <option value="">Todos</option>
-        <option value="S">✔ Sí se lo lleva</option>
-        <option value="N">✘ No se lo lleva</option>
-      </select>
+    <div class="fg fms-wrap" data-f="lleva">
+      <label>Cliente se lo lleva</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos</button>
+      <div class="fms-panel">
+        <label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('lleva',this.checked)"> Seleccionar todos</label>
+        <div class="fms-list">
+          <label class="fms-item"><input type="checkbox" value="S" onchange="toggleCheck('lleva',this.value,this.checked)"> ✔ Sí se lo lleva</label>
+          <label class="fms-item"><input type="checkbox" value="N" onchange="toggleCheck('lleva',this.value,this.checked)"> ✘ No se lo lleva</label>
+        </div>
+      </div>
     </div>
     <div class="fbar-actions">
+      <button class="fbtn-apply" onclick="collectAndApply()">✔ Aplicar</button>
       <button class="fbtn-reset" onclick="resetFilters()">✕ Limpiar</button>
       <div class="fcount">Mostrando <b id="fcount-num">—</b> registros</div>
     </div>
@@ -490,18 +526,21 @@ const G={sub:'#6b7ca4',grn:'#059669',red:'#dc2626',blu:'#2563eb',amb:'#d97706',b
 let RAW=[], PAGE=1, PS=60, SC=null, SA=true;
 let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null, paretoC=null;
 
-// Global filter state — single source of truth
-const F = { estado:'', mes:'', dept:'', origen:'', causal:'', lleva:'' };
+// Global filter state — single source of truth (arrays for multi-select)
+const F  = { estado:[], mes:[], dept:[], origen:[], causal:[], lleva:[] };
+// Pending state (what user has checked but not yet applied)
+const FP = { estado:[], mes:[], dept:[], origen:[], causal:[], lleva:[] };
+const FMS_DEFAULTS = { estado:'Todos los estados', mes:'Todos los meses', dept:'Todos los deptos.', origen:'Todos los orígenes', causal:'Todas las causales', lleva:'Todos' };
 
 // Derived filtered dataset
 function filtered() {
   return RAW.filter(r => {
-    if (F.estado && r.CLASIFICACION !== F.estado) return false;
-    if (F.mes    && r.mes_año       !== F.mes)    return false;
-    if (F.dept   && r.DEPARTAMENTO  !== F.dept)   return false;
-    if (F.origen && r.ORIGEN !== F.origen) return false;
-    if (F.causal && r.CAUSAL        !== F.causal) return false;
-    if (F.lleva  && r.CLIENTE_LLEVA !== F.lleva)  return false;
+    if (F.estado.length && !F.estado.includes(r.CLASIFICACION))  return false;
+    if (F.mes.length    && !F.mes.includes(r.mes_año))           return false;
+    if (F.dept.length   && !F.dept.includes(r.DEPARTAMENTO))     return false;
+    if (F.origen.length && !F.origen.includes(r.ORIGEN))         return false;
+    if (F.causal.length && !F.causal.includes(r.CAUSAL))         return false;
+    if (F.lleva.length  && !F.lleva.includes(r.CLIENTE_LLEVA))   return false;
     return true;
   });
 }
@@ -547,37 +586,25 @@ function populateFilterOptions() {
   const origs=[...new Set(RAW.map(r=>r.ORIGEN).filter(v=>v&&v!==''))].sort();
   const causas=[...new Set(RAW.map(r=>r.CAUSAL).filter(v=>v&&v!==''))].sort();
 
-  document.querySelectorAll('[data-f]').forEach(sel => {
-    const f = sel.getAttribute('data-f');
-    if (f === 'mes') {
-      sel.innerHTML='<option value="">Todos los meses</option>';
-      meses.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=ml[p]||p;sel.appendChild(o);});
-    } else if (f === 'dept') {
-      sel.innerHTML='<option value="">Todos los deptos.</option>';
-      depts.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
-    } else if (f === 'origen') {
-      sel.innerHTML='<option value="">Todos los orígenes</option>';
-      origs.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
-    } else if (f === 'causal') {
-      sel.innerHTML='<option value="">Todas las causales</option>';
-      causas.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
-    }
+  const OPTIONS = {
+    mes:    meses.map(v=>({val:v, label:ml[v]||v})),
+    dept:   depts.map(v=>({val:v, label:v})),
+    origen: origs.map(v=>({val:v, label:v})),
+    causal: causas.map(v=>({val:v, label:v}))
+  };
+
+  document.querySelectorAll('.fms-wrap[data-f]').forEach(wrap => {
+    const key = wrap.getAttribute('data-f');
+    const list = wrap.querySelector('.fms-list');
+    if (!list || !OPTIONS[key]) return;
+    list.innerHTML = OPTIONS[key].map(({val, label}) =>
+      `<label class="fms-item"><input type="checkbox" value="${val.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" onchange="toggleCheck('${key}',this.value,this.checked)"> ${label}</label>`
+    ).join('');
   });
 }
 
-// ══ APPLY FILTERS (sync all selects → rebuild everything) ═════════════
-function applyFilters(src) {
-  // Read ONLY from the element that triggered the change
-  if (src && src.getAttribute) {
-    F[src.getAttribute('data-f')] = src.value;
-  }
-  // Sync every copy of each select across all panels
-  document.querySelectorAll('[data-f]').forEach(sel => {
-    const f = sel.getAttribute('data-f');
-    if (sel !== src) sel.value = F[f] || '';
-    sel.classList.toggle('active', !!F[f]);
-  });
-
+// ══ APPLY FILTERS (rebuild everything from F state) ════════════════════
+function applyFilters() {
   PAGE = 1;
   const fil = filtered();
   const tot = fil.length;
@@ -601,6 +628,9 @@ function applyFilters(src) {
   // Count badges in all filter bars
   document.querySelectorAll('[id^="fcount-num"]').forEach(el => el.textContent = tot.toLocaleString('es-CO'));
 
+  // Sync triggers and checkboxes to reflect applied F (keeps FP in sync too)
+  Object.keys(F).forEach(k => { FP[k] = [...F[k]]; syncAllCheckboxes(k); syncAllTriggers(k); });
+
   // Active pills
   updatePills();
 
@@ -616,28 +646,107 @@ function applyFilters(src) {
 }
 
 function resetFilters() {
-  Object.keys(F).forEach(k=>F[k]='');
-  document.querySelectorAll('[data-f]').forEach(sel=>{sel.value='';sel.classList.remove('active');});
+  Object.keys(F).forEach(k => { F[k] = []; FP[k] = []; });
+  document.querySelectorAll('.fms-list input[type=checkbox],.fms-all input').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  Object.keys(F).forEach(k => syncAllTriggers(k));
+  document.querySelectorAll('.fms-panel.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.fms-trigger.open').forEach(b => b.classList.remove('open'));
   applyFilters();
 }
 
 function setFilter(key, val) {
-  F[key] = F[key] === val ? '' : val; // toggle
-  document.querySelectorAll(`[data-f="${key}"]`).forEach(sel=>{sel.value=F[key];sel.classList.toggle('active',!!F[key]);});
+  // Toggle single value (called from chart/card clicks) — applies immediately
+  const idx = F[key].indexOf(val);
+  if (idx >= 0) F[key].splice(idx, 1);
+  else F[key].push(val);
+  applyFilters(); // applyFilters syncs FP and checkboxes internally
+}
+
+function clearFilter(key) {
+  F[key] = []; FP[key] = [];
+  syncAllCheckboxes(key);
+  syncAllTriggers(key);
   applyFilters();
 }
+
+// ══ MULTI-SELECT DROPDOWN CONTROLS ════════════════════════════════════
+function toggleDropdown(btn) {
+  const wrap = btn.closest('.fms-wrap');
+  const panel = wrap.querySelector('.fms-panel');
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.fms-panel.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.fms-trigger.open').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); btn.classList.add('open'); }
+}
+
+function toggleCheck(key, val, checked) {
+  if (checked) { if (!FP[key].includes(val)) FP[key].push(val); }
+  else { FP[key] = FP[key].filter(v => v !== val); }
+  syncAllCheckboxes(key);
+  syncPendingTriggers(key);
+}
+
+function toggleAllCheck(key, checked) {
+  const allVals = [...document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-list input[type=checkbox]`)].map(cb => cb.value);
+  FP[key] = checked ? allVals : [];
+  syncAllCheckboxes(key);
+  syncPendingTriggers(key);
+}
+
+function syncAllCheckboxes(key) {
+  document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-list input[type=checkbox]`).forEach(cb => {
+    cb.checked = FP[key].includes(cb.value);
+  });
+  const total = document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-list input[type=checkbox]`).length;
+  document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-all input`).forEach(cb => {
+    cb.checked = total > 0 && FP[key].length === total;
+    cb.indeterminate = FP[key].length > 0 && FP[key].length < total;
+  });
+}
+
+function syncPendingTriggers(key) {
+  document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-trigger`).forEach(btn => {
+    const n = FP[key].length;
+    btn.textContent = n === 0 ? FMS_DEFAULTS[key] : (n === 1 ? FP[key][0] : `${n} seleccionados`);
+    btn.classList.toggle('active', n > 0);
+  });
+}
+
+function syncAllTriggers(key) {
+  document.querySelectorAll(`.fms-wrap[data-f="${key}"] .fms-trigger`).forEach(btn => {
+    const n = F[key].length;
+    btn.textContent = n === 0 ? FMS_DEFAULTS[key] : (n === 1 ? F[key][0] : `${n} seleccionados`);
+    btn.classList.toggle('active', n > 0);
+  });
+}
+
+function collectAndApply() {
+  Object.keys(F).forEach(k => F[k] = [...FP[k]]);
+  document.querySelectorAll('.fms-panel.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.fms-trigger.open').forEach(b => b.classList.remove('open'));
+  applyFilters();
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.fms-wrap')) {
+    document.querySelectorAll('.fms-panel.open').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.fms-trigger.open').forEach(b => b.classList.remove('open'));
+  }
+}, true);
 
 // ══ ACTIVE PILLS ══════════════════════════════════════════════════════
 const FLABELS = {estado:'Estado',mes:'Mes',dept:'Depto.',origen:'Origen incumpl.',causal:'Causal',lleva:'Cliente se lo lleva'};
 function updatePills() {
-  const active = Object.entries(F).filter(([,v])=>v);
-  const mesLabel = Object.fromEntries(MONTHLY.map(m=>[m.mes_año, m.label]));
+  const active = Object.entries(F).filter(([,v]) => v.length > 0);
+  const mesLabel = Object.fromEntries(MONTHLY.map(m => [m.mes_año, m.label]));
   document.querySelectorAll('[id^="active-pills"]').forEach(el => {
     if (active.length === 0) { el.style.display='none'; el.innerHTML=''; return; }
     el.style.display='flex';
-    el.innerHTML = active.map(([k,v])=>{
-      const display = k === 'mes' ? (mesLabel[v] || v) : v;
-      return `<span class="pill">${FLABELS[k]}: ${display} <button onclick="setFilter('${k}','')">×</button></span>`;
+    el.innerHTML = active.map(([k,v]) => {
+      const disp = k === 'mes' ? v.map(m => mesLabel[m] || m).join(', ') : v.join(', ');
+      const label = disp.length > 50 ? disp.slice(0, 50) + '…' : disp;
+      return `<span class="pill">${FLABELS[k]}: ${label} <button onclick="clearFilter('${k}')">×</button></span>`;
     }).join('');
   });
 }
@@ -710,7 +819,7 @@ function drawOvOrigenCards(fil) {
   const grid=document.getElementById('ogrid-ov'); grid.innerHTML='';
   sorted.forEach(([orig,cnt],i)=>{
     const col=clr(orig,i),pct=tot>0?(cnt/tot*100).toFixed(1):'0.0';
-    const isSelected=F.origen===orig;
+    const isSelected=F.origen.includes(orig);
     const div=document.createElement('div');
     div.className='ocard'+(isSelected?' selected':'');
     div.onclick=()=>setFilter('origen',orig);
@@ -749,7 +858,7 @@ function drawOvCausal(fil) {
     el.innerHTML = sorted.map(([cau, n]) => {
       const pct    = inc > 0 ? (n/inc*100).toFixed(1) : '0.0';
       const bar    = Math.round(n/max*100);
-      const sel    = F.causal === cau;
+      const sel    = F.causal.includes(cau);
       const hasDet = (window._currentDetMap[cau]||[]).length > 0;
       const encoded = encodeURIComponent(cau);
       const detBtn  = hasDet
@@ -906,11 +1015,11 @@ function drawPareto(fil) {
   // Ignora F.causal para preservar la distribución completa como contexto analítico.
   // Todos los demás filtros activos (mes, depto, origen, estado, lleva) se aplican igual.
   const filSinCausal = RAW.filter(r => {
-    if (F.estado && r.CLASIFICACION !== F.estado) return false;
-    if (F.mes    && r.mes_año       !== F.mes)    return false;
-    if (F.dept   && r.DEPARTAMENTO  !== F.dept)   return false;
-    if (F.origen && r.ORIGEN        !== F.origen) return false;
-    if (F.lleva  && r.CLIENTE_LLEVA !== F.lleva)  return false;
+    if (F.estado.length && !F.estado.includes(r.CLASIFICACION))  return false;
+    if (F.mes.length    && !F.mes.includes(r.mes_año))           return false;
+    if (F.dept.length   && !F.dept.includes(r.DEPARTAMENTO))     return false;
+    if (F.origen.length && !F.origen.includes(r.ORIGEN))         return false;
+    if (F.lleva.length  && !F.lleva.includes(r.CLIENTE_LLEVA))   return false;
     return true;
   });
   const inc = filSinCausal.filter(r => r.CLASIFICACION === 'Incumplimiento de cita');
@@ -982,7 +1091,7 @@ function drawPareto(fil) {
           label: 'Incumplimientos',
           data: vals,
           backgroundColor: rows.map(r => {
-            if (F.causal) return r.causal === F.causal ? 'rgba(220,38,38,.90)' : 'rgba(220,38,38,.13)';
+            if (F.causal.length) return F.causal.includes(r.causal) ? 'rgba(220,38,38,.90)' : 'rgba(220,38,38,.13)';
             return r.cumPct <= 80 ? 'rgba(220,38,38,.75)' : 'rgba(220,38,38,.28)';
           }),
           borderRadius: 4,
@@ -1245,8 +1354,8 @@ async function downloadExcel() {
     var sr=[['Total OPs',tot,'100%'],['Cumplimiento de cita',c,tot>0?(c/tot*100).toFixed(1)+'%':'0%'],['Incumplimiento de cita',inc,tot>0?(inc/tot*100).toFixed(1)+'%':'0%'],['','',''],['Origen del Incumplimiento','','']];
     Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}).forEach(function(o){sr.push(['  '+o,counts[o],inc>0?(counts[o]/inc*100).toFixed(1)+'%':'0%']);});
     var parts=['Cumplimiento_Citas'];
-    var activeFilters=Object.entries(F).filter(([,v])=>v);
-    activeFilters.forEach(([k,v])=>parts.push(v.replace(/\s+/g,'_').slice(0,20)));
+    var activeFilters=Object.entries(F).filter(([,v])=>v.length>0);
+    activeFilters.forEach(([k,v])=>parts.push(v.join('-').replace(/\s+/g,'_').slice(0,30)));
     parts.push(new Date().toISOString().slice(0,10));
     var filename=parts.join('_')+'.xlsx';
     var blob=await buildXlsxBlob([{name:'Detalle',headers:headers,rows:detRows},{name:'Resumen',headers:sh,rows:sr}]);
@@ -1264,11 +1373,11 @@ function openCausalModal(cau, total) {
   var subs = (window._currentDetMap && window._currentDetMap[cau]) || [];
   // Describe active filters in subtitle
   var filterParts = [];
-  if (F.origen)  filterParts.push('Origen: ' + F.origen);
-  if (F.dept)    filterParts.push('Depto: ' + F.dept);
-  if (F.mes)     filterParts.push(F.mes);
-  if (F.estado)  filterParts.push(F.estado === 'Incumplimiento de cita' ? 'Incumplimientos' : 'Cumplimientos');
-  if (F.lleva)   filterParts.push('Cliente se lo lleva: ' + F.lleva);
+  if (F.origen.length)  filterParts.push('Origen: ' + F.origen.join(', '));
+  if (F.dept.length)    filterParts.push('Depto: ' + F.dept.join(', '));
+  if (F.mes.length)     filterParts.push(F.mes.join(', '));
+  if (F.estado.length)  filterParts.push(F.estado.includes('Incumplimiento de cita') ? 'Incumplimientos' : 'Cumplimientos');
+  if (F.lleva.length)   filterParts.push('Cliente se lo lleva: ' + F.lleva.join(', '));
   var filterStr = filterParts.length > 0 ? ' · Filtros: ' + filterParts.join(', ') : '';
   document.getElementById('modal-title').textContent = cau;
   document.getElementById('modal-subtitle').textContent =
