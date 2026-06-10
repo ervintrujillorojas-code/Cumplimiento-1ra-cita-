@@ -315,6 +315,20 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
       <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los meses</button>
       <div class="fms-panel"><label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('mes',this.checked)"> Seleccionar todos</label><div class="fms-list"></div></div>
     </div>
+    <div class="fg fms-wrap" data-f="poligono">
+      <label>Polígono</label>
+      <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los polígonos</button>
+      <div class="fms-panel">
+        <label class="fms-all"><input type="checkbox" onchange="toggleAllCheck('poligono',this.checked)"> Seleccionar todos</label>
+        <div class="fms-list">
+          <label class="fms-item"><input type="checkbox" value="COSTA 1"      onchange="toggleCheck('poligono',this.value,this.checked)"> COSTA 1</label>
+          <label class="fms-item"><input type="checkbox" value="COSTA 2"      onchange="toggleCheck('poligono',this.value,this.checked)"> COSTA 2</label>
+          <label class="fms-item"><input type="checkbox" value="ANTIOQUIA"    onchange="toggleCheck('poligono',this.value,this.checked)"> ANTIOQUIA</label>
+          <label class="fms-item"><input type="checkbox" value="CUNDINAMARCA" onchange="toggleCheck('poligono',this.value,this.checked)"> CUNDINAMARCA</label>
+          <label class="fms-item"><input type="checkbox" value="SANTANDER"    onchange="toggleCheck('poligono',this.value,this.checked)"> SANTANDER</label>
+        </div>
+      </div>
+    </div>
     <div class="fg fms-wrap" data-f="dept">
       <label>Departamento</label>
       <button class="fms-trigger" onclick="toggleDropdown(this)">Todos los deptos.</button>
@@ -527,16 +541,26 @@ let RAW=[], PAGE=1, PS=60, SC=null, SA=true;
 let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null, paretoC=null;
 
 // Global filter state — single source of truth (arrays for multi-select)
-const F  = { estado:[], mes:[], dept:[], origen:[], causal:[], lleva:[] };
+const F  = { estado:[], mes:[], poligono:[], dept:[], origen:[], causal:[], lleva:[] };
 // Pending state (what user has checked but not yet applied)
-const FP = { estado:[], mes:[], dept:[], origen:[], causal:[], lleva:[] };
-const FMS_DEFAULTS = { estado:'Todos los estados', mes:'Todos los meses', dept:'Todos los deptos.', origen:'Todos los orígenes', causal:'Todas las causales', lleva:'Todos' };
+const FP = { estado:[], mes:[], poligono:[], dept:[], origen:[], causal:[], lleva:[] };
+const FMS_DEFAULTS = { estado:'Todos los estados', mes:'Todos los meses', poligono:'Todos los polígonos', dept:'Todos los deptos.', origen:'Todos los orígenes', causal:'Todas las causales', lleva:'Todos' };
+
+// Agrupación de departamentos por polígono
+const POLIGONOS = {
+  'COSTA 1':      ['ATLANTICO', 'BOLIVAR', 'MAGDALENA'],
+  'COSTA 2':      ['CESAR', 'CORDOBA', 'GUAJIRA', 'SUCRE'],
+  'ANTIOQUIA':    ['ANTIOQUIA'],
+  'CUNDINAMARCA': ['BOYACA', 'CUNDINAMARCA', 'META'],
+  'SANTANDER':    ['SANTANDER']
+};
 
 // Derived filtered dataset
 function filtered() {
   return RAW.filter(r => {
     if (F.estado.length && !F.estado.includes(r.CLASIFICACION))  return false;
     if (F.mes.length    && !F.mes.includes(r.mes_año))           return false;
+    if (F.poligono.length) { const dp=F.poligono.flatMap(p=>POLIGONOS[p]||[]); if (!dp.includes(r.DEPARTAMENTO)) return false; }
     if (F.dept.length   && !F.dept.includes(r.DEPARTAMENTO))     return false;
     if (F.origen.length && !F.origen.includes(r.ORIGEN))         return false;
     if (F.causal.length && !F.causal.includes(r.CAUSAL))         return false;
@@ -736,7 +760,7 @@ document.addEventListener('click', e => {
 }, true);
 
 // ══ ACTIVE PILLS ══════════════════════════════════════════════════════
-const FLABELS = {estado:'Estado',mes:'Mes',dept:'Depto.',origen:'Origen incumpl.',causal:'Causal',lleva:'Cliente se lo lleva'};
+const FLABELS = {estado:'Estado',mes:'Mes',poligono:'Polígono',dept:'Depto.',origen:'Origen incumpl.',causal:'Causal',lleva:'Cliente se lo lleva'};
 function updatePills() {
   const active = Object.entries(F).filter(([,v]) => v.length > 0);
   const mesLabel = Object.fromEntries(MONTHLY.map(m => [m.mes_año, m.label]));
@@ -1017,6 +1041,7 @@ function drawPareto(fil) {
   const filSinCausal = RAW.filter(r => {
     if (F.estado.length && !F.estado.includes(r.CLASIFICACION))  return false;
     if (F.mes.length    && !F.mes.includes(r.mes_año))           return false;
+    if (F.poligono.length) { const dp=F.poligono.flatMap(p=>POLIGONOS[p]||[]); if (!dp.includes(r.DEPARTAMENTO)) return false; }
     if (F.dept.length   && !F.dept.includes(r.DEPARTAMENTO))     return false;
     if (F.origen.length && !F.origen.includes(r.ORIGEN))         return false;
     if (F.lleva.length  && !F.lleva.includes(r.CLIENTE_LLEVA))   return false;
