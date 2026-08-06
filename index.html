@@ -289,6 +289,7 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
     <button class="ntab"     onclick="switchTab('mo',this)">Mensual</button>
     <button class="ntab"     onclick="switchTab('or',this)">Origen</button>
     <button class="ntab"     onclick="switchTab('dp',this)">Departamentos</button>
+    <button class="ntab"     onclick="switchTab('ti',this)">Tiendas</button>
     <button class="ntab"     onclick="switchTab('dt',this)">Detalle</button>
   </div>
 </nav>
@@ -481,6 +482,35 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
   </div>
 </div>
 
+<!-- ══ TIENDAS ═════════════════════════════════════════════════════ -->
+<div id="p-ti" class="panel">
+  <div id="fbar-ti"></div>
+  <div class="sec">Cumplimiento por tienda</div>
+  <div class="krow fa" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi k1"><div class="kpi-lbl">Total Tiendas</div><div class="kpi-val" id="kv-ti-tot">—</div><div class="kpi-sub" id="ks-ti-tot">activas en el período</div></div>
+    <div class="kpi k2"><div class="kpi-lbl">Mayor Cumplimiento</div><div class="kpi-val" id="kv-ti-mejor">—</div><div class="kpi-sub" id="ks-ti-mejor">—</div></div>
+    <div class="kpi k3"><div class="kpi-lbl">Mayor Incumplimiento</div><div class="kpi-val" id="kv-ti-peor">—</div><div class="kpi-sub" id="ks-ti-peor">—</div></div>
+  </div>
+  <div class="crow c21 fa">
+    <div class="card"><div class="card-hd">Volumen</div><canvas id="ctienda" style="max-height:420px"></canvas></div>
+    <div class="card"><div class="card-hd">% Cumplimiento</div><canvas id="ctienda2" style="max-height:420px"></canvas></div>
+  </div>
+  <div class="sec">Tabla por tienda</div>
+  <div class="card fa d1">
+    <div class="tbl-wrap">
+      <table class="dtbl-dept">
+        <thead><tr>
+          <th>Tienda</th><th style="text-align:right">Total</th>
+          <th style="text-align:right">Cumplidas</th><th style="text-align:right">Incumplidas</th>
+          <th style="text-align:right">% Cumpl.</th><th class="dbar-cell">Incumpl %</th>
+        </tr></thead>
+        <tbody id="tienda-tbody"></tbody>
+      </table>
+    </div>
+    <div class="kpi-sub" style="padding:10px 4px 0" id="tienda-nota"></div>
+  </div>
+</div>
+
 <!-- ══ DETALLE ════════════════════════════════════════════════════ -->
 <div id="p-dt" class="panel">
   <div id="fbar-dt"></div>
@@ -544,7 +574,7 @@ const G={sub:'#6b7ca4',grn:'#059669',red:'#dc2626',blu:'#2563eb',amb:'#d97706',b
 
 // ══ GLOBAL STATE ══════════════════════════════════════════════════════
 let RAW=[], PAGE=1, PS=60, SC=null, SA=true;
-let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null, paretoC=null;
+let barC=null, lineC=null, stackedC=null, causalC=null, deptC=null, dept2C=null, paretoC=null, tiendaC=null, tienda2C=null;
 
 // Global filter state — single source of truth (arrays for multi-select)
 const F  = { estado:[], mes:[], poligono:[], dept:[], tienda:[], origen:[], causal:[], lleva:[] };
@@ -601,7 +631,7 @@ window.addEventListener('load',async()=>{
 
 // ══ FILTER BAR INJECTION ══════════════════════════════════════════════
 function injectFilterBars() {
-  ['ov','mo','or','dp','dt'].forEach(id => {
+  ['ov','mo','or','dp','ti','dt'].forEach(id => {
     const tpl = document.getElementById('fbar-tpl');
     const clone = tpl.content.cloneNode(true);
     // Give unique IDs to cloned elements
@@ -686,6 +716,7 @@ function applyFilters() {
   drawOrigenPanel(fil);
   drawPareto(fil);
   drawDeptCharts(fil);
+  drawTiendaCharts(fil);
   renderDet();
 }
 
@@ -1313,6 +1344,91 @@ function drawDeptTable(fil) {
     tr.style.cursor='pointer';
     tr.onclick=()=>setFilter('dept',d);
     tr.innerHTML=`<td style="font-weight:600">${d}</td><td>${tot.toLocaleString('es-CO')}</td><td class="cg">${c.toLocaleString('es-CO')}</td><td class="cr">${i.toLocaleString('es-CO')}</td><td class="${cls}" style="font-family:var(--mono);font-size:11px">${pct}%</td><td class="dbar-cell"><div class="dbar-bg"><div class="dbar-fill" style="width:${bar}%"></div></div></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ══ TIENDAS ═════════════════════════════════════════════════════════════
+function drawTiendaCharts(fil) {
+  drawTiendaTable(fil);
+  const MIN_VOL=20; // por debajo de esto, el % es poco representativo (ver README Fase 15)
+  const counts={};
+  fil.forEach(r=>{
+    if(!r.TIENDA) return;
+    if(!counts[r.TIENDA]) counts[r.TIENDA]={c:0,i:0};
+    if(r.CLASIFICACION==='Cumplimiento de cita') counts[r.TIENDA].c++;
+    else counts[r.TIENDA].i++;
+  });
+  const tiendas=Object.entries(counts)
+    .map(([name,v])=>({TIENDA:name,cumplidas:v.c,incumplidas:v.i,total:v.c+v.i}))
+    .sort((a,b)=>b.total-a.total);
+  const elegibles=tiendas.filter(t=>t.total>=MIN_VOL)
+    .slice().sort((a,b)=>(a.cumplidas/a.total)-(b.cumplidas/b.total)); // peor primero
+
+  document.getElementById('kv-ti-tot').textContent=tiendas.length;
+  if(elegibles.length){
+    const peor=elegibles[0], mejor=elegibles[elegibles.length-1];
+    document.getElementById('kv-ti-mejor').textContent=(mejor.cumplidas/mejor.total*100).toFixed(1)+'%';
+    document.getElementById('ks-ti-mejor').textContent=mejor.TIENDA;
+    document.getElementById('kv-ti-peor').textContent=(peor.incumplidas/peor.total*100).toFixed(1)+'%';
+    document.getElementById('ks-ti-peor').textContent=peor.TIENDA;
+  } else {
+    ['kv-ti-mejor','kv-ti-peor'].forEach(id=>document.getElementById(id).textContent='—');
+    ['ks-ti-mejor','ks-ti-peor'].forEach(id=>document.getElementById(id).textContent='—');
+  }
+
+  if(tiendaC){tiendaC.destroy();tiendaC=null;}
+  if(tienda2C){tienda2C.destroy();tienda2C=null;}
+
+  if(tiendas.length===0) return;
+
+  tiendaC=new Chart(document.getElementById('ctienda'),{type:'bar',
+    data:{labels:tiendas.map(t=>t.TIENDA),datasets:[
+      {label:'Cumplidas',  data:tiendas.map(t=>t.cumplidas),  backgroundColor:'rgba(5,150,105,.7)', borderRadius:3,borderSkipped:false},
+      {label:'Incumplidas',data:tiendas.map(t=>t.incumplidas),backgroundColor:'rgba(220,38,38,.6)',borderRadius:3,borderSkipped:false}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:leg(),
+      datalabels:dlabels({color:'#fff',anchor:'center',align:'center',
+        formatter:function(v){return v>200?v.toLocaleString('es-CO'):'';},display:function(ctx){return ctx.dataset.data[ctx.dataIndex]>200;}})},
+      scales:{x:gx(true),y:{stacked:true,ticks:{color:G.sub,font:{size:10}},grid:{color:'rgba(0,0,0,0)'}}}}
+  });
+
+  tienda2C=new Chart(document.getElementById('ctienda2'),{type:'bar',
+    data:{labels:elegibles.map(t=>t.TIENDA),datasets:[{label:'% Cumplimiento',
+      data:elegibles.map(t=>+(t.cumplidas/t.total*100).toFixed(1)),
+      backgroundColor:elegibles.map(t=>t.cumplidas/t.total>=.9?'rgba(5,150,105,.7)':t.cumplidas/t.total>=.65?'rgba(217,119,6,.7)':'rgba(220,38,38,.65)'),
+      borderRadius:3,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},
+      datalabels:dlabels({color:'#fff',anchor:'end',align:'left',offset:4,formatter:v=>v+'%'})},
+      scales:{x:gy({min:0,max:100,ticks:{color:G.sub,font:{size:10},callback:v=>v+'%'}}),y:{ticks:{color:G.sub,font:{size:10}},grid:{color:'rgba(0,0,0,0)'}}}}
+  });
+
+  const excluidas=tiendas.length-elegibles.length;
+  const nota=document.getElementById('tienda-nota');
+  if(nota) nota.textContent = excluidas>0
+    ? `* El gráfico de % Cumplimiento excluye ${excluidas} tienda(s) con menos de ${MIN_VOL} OPs en el período filtrado (muestra insuficiente para un % representativo). Siguen visibles en la tabla y en el gráfico de volumen.`
+    : '';
+}
+
+function drawTiendaTable(fil) {
+  const counts={};
+  fil.forEach(r=>{
+    if(!r.TIENDA) return;
+    if(!counts[r.TIENDA]) counts[r.TIENDA]={c:0,i:0};
+    if(r.CLASIFICACION==='Cumplimiento de cita') counts[r.TIENDA].c++;
+    else counts[r.TIENDA].i++;
+  });
+  const sorted=Object.entries(counts).map(([t,v])=>({t,c:v.c,i:v.i,tot:v.c+v.i}))
+               .sort((a,b)=>b.tot-a.tot);
+  const tb=document.getElementById('tienda-tbody'); tb.innerHTML='';
+  sorted.forEach(({t,c,i,tot})=>{
+    const pct=(c/tot*100).toFixed(1);
+    const cls=+pct>=90?'cg':+pct>=65?'ca':'cr';
+    const bar=Math.round(i/tot*100);
+    const tr=document.createElement('tr');
+    tr.style.cursor='pointer';
+    tr.onclick=()=>setFilter('tienda',t);
+    tr.innerHTML=`<td style="font-weight:600">${t}</td><td>${tot.toLocaleString('es-CO')}</td><td class="cg">${c.toLocaleString('es-CO')}</td><td class="cr">${i.toLocaleString('es-CO')}</td><td class="${cls}" style="font-family:var(--mono);font-size:11px">${pct}%</td><td class="dbar-cell"><div class="dbar-bg"><div class="dbar-fill" style="width:${bar}%"></div></div></td>`;
     tb.appendChild(tr);
   });
 }
