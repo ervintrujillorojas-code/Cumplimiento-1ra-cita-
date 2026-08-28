@@ -111,6 +111,8 @@ main{padding:20px 24px;max-width:1500px;margin:0 auto}
 .lg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--sub)}
 .lg-dot{width:8px;height:8px;border-radius:50%}
 canvas{max-height:290px}
+#cline-wrap{height:340px}
+#cline{max-height:none!important}
 
 /* ── ORIGEN CARDS ── */
 .ogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -400,7 +402,7 @@ table tbody td{padding:8px 13px;font-size:12px;white-space:nowrap;color:var(--tx
       </div>
       <canvas id="cbar"></canvas>
     </div>
-    <div class="card"><div class="card-hd">% Cumplimiento mensual</div><canvas id="cline"></canvas></div>
+    <div class="card"><div class="card-hd">% Cumplimiento mensual</div><div id="cline-wrap"><canvas id="cline"></canvas></div></div>
   </div>
 
   <div class="sec">Origen del incumplimiento <span style="font-size:10px;color:var(--sub);font-weight:400;text-transform:none;letter-spacing:0">· clic para filtrar</span></div>
@@ -876,16 +878,16 @@ function drawOvCharts(fil) {
   lineC=new Chart(document.getElementById('cline'),{type:'bar',
     data:{labels,datasets:[
       {type:'line',label:'Tendencia',data:dpct,order:0,
-        borderColor:G.blu,backgroundColor:G.blu,borderWidth:2.5,
+        borderColor:G.blu,backgroundColor:G.blu,borderWidth:2.5,borderDash:[6,4],
         fill:false,tension:.35,pointRadius:4,pointBackgroundColor:G.blu,pointBorderColor:'#fff',pointBorderWidth:2,
         datalabels:{display:false}},
       {type:'bar',label:'% Cumplimiento',data:dpct,order:1,
-        backgroundColor:'rgba(5,150,105,.75)',borderRadius:4,borderSkipped:false,
-        datalabels:dlabels({color:G.grn,anchor:'end',align:'top',offset:6,
+        backgroundColor:'rgba(16,185,129,.7)',borderRadius:4,borderSkipped:false,
+        datalabels:dlabels({color:'#10b981',anchor:'end',align:'top',offset:6,
           formatter:v=>v+'%'})}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:leg()},
-      scales:{x:gx(),y:gy({min:0,max:100,ticks:{color:G.sub,font:{size:10},callback:v=>v+'%'}})}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:leg()},
+      scales:{x:gx(),y:gy({min:0,max:100,ticks:{stepSize:10,color:G.sub,font:{size:10},callback:v=>v+'%'}})}}
   });
 }
 
@@ -1585,7 +1587,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 </div>
 
 <!-- @@BUILD_VERSION_START@@ -->
-<div style="text-align:center;font-size:11px;color:var(--muted);opacity:.7;padding:10px 0 6px">v1.18 · Generado 27/08/2026 09:13</div>
+<div style="text-align:center;font-size:11px;color:var(--muted);opacity:.7;padding:10px 0 6px">v1.18 · Generado 27/08/2026 19:31</div>
 <!-- @@BUILD_VERSION_END@@ -->
 
 </body>
